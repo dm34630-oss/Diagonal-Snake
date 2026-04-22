@@ -1,0 +1,264 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+   <meta charset="UTF-8">
+   <title>Sak  - l </title>
+   <style>
+       body { display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; background-color: #2c3e50; color: white; font-family: Arial, sans-serif; flex-direction: column; }
+       canvas { border: 5px solid #ecf0f1; box-shadow: 0 0 20px rgba(0,0,0,0.5); background-color: #000; }
+       h1 { margin-bottom: 10px; }
+       #msg { color: #e74c3c; font-weight: bold; height: 20px; margin-bottom: 10px; }
+   </style>
+</head>
+<body>
+   <h1>Score: <span id="score">0</span></h1>
+   <div id="msg">placeholder (Use Arrows for Diagonal)</div>
+   <canvas id="snakeGame" width="400" height="400"></canvas>
+
+
+   <script>
+       const canvas = document.getElementById("snakeGame");
+       const ctx = canvas.getContext("2d");
+       const scoreElement = document.getElementById("score");
+       const msgElement = document.getElementById("msg");
+
+
+       const box = 20;
+       let score = 0;
+       let snake = [{ x: 9 * box, y: 10 * box }];
+       let food = { x: Math.floor(Math.random() * 19) * box, y: Math.floor(Math.random() * 19) * box };
+       let dir = { x: 0, y: 0 };
+       let keysPressed = {};
+       let gameTick = 0;
+       let bossMode = false;
+       let bossHits = 0;
+       let bossSnake = [];
+       let bossDir = { x: 0, y: 0 };
+       let currentBossType = 1;
+       let boss2Defeated = false; // Flag to prevent immediate respawn
+
+
+       // Checkpoint System
+       let checkpointState = {
+           score: 0,
+           snakeLength: 1,
+           currentBossType: 1,
+           bossThreshold: 5
+       };
+
+
+       document.addEventListener("keydown", (e) => {
+           keysPressed[e.keyCode] = true;
+           updatePlayerVelocity();
+       });
+
+
+       document.addEventListener("keyup", (e) => {
+           delete keysPressed[e.keyCode];
+           updatePlayerVelocity();
+       });
+
+
+       function updatePlayerVelocity() {
+           let newX = 0;
+           let newY = 0;
+           if (keysPressed[37]) newX = -box;
+           if (keysPressed[39]) newX = box;
+           if (keysPressed[38]) newY = -box;
+           if (keysPressed[40]) newY = box;
+
+
+           if (newX !== 0 || newY !== 0) {
+               if (snake.length > 1 && newX === -dir.x && newY === -dir.y) {
+                   snake.reverse();
+                   dir.x = newX;
+                   dir.y = newY;
+               } else {
+                   dir.x = newX;
+                   dir.y = newY;
+               }
+           }
+       }
+
+
+       function collision(head, array) {
+           for(let i = 1; i < array.length; i++) {
+               if(head.x == array[i].x && head.y == array[i].y) return true;
+           }
+           return false;
+       }
+
+
+       function updateBossDirection() {
+           if (bossSnake.length === 0) return;
+           let head = bossSnake[0];
+
+
+           if (currentBossType === 1) {
+               let playerHead = snake[0];
+               let slipChance = Math.random();
+               if (slipChance < 0.65) {
+                   const moves = [{x: box, y: 0}, {x: -box, y: 0}, {x: 0, y: box}, {x: 0, y: -box}];
+                   let randomMove = moves[Math.floor(Math.random() * moves.length)];
+                   bossDir.x = randomMove.x; bossDir.y = randomMove.y;
+                   return;
+               }
+               let targetX = playerHead.x;
+               let targetY = playerHead.y;
+               if (Math.abs(targetX - head.x) > Math.abs(targetY - head.y)) {
+                   bossDir.x = head.x < targetX ? box : -box;
+                   bossDir.y = 0;
+               } else {
+                   bossDir.y = head.y < targetY ? box : -box;
+                   bossDir.x = 0;
+               }
+           } else if (currentBossType === 2) {
+               if (bossDir.x === 0 && bossDir.y === 0) { bossDir = { x: box, y: box }; }
+               let nextX = head.x + bossDir.x;
+               let nextY = head.y + bossDir.y;
+               if (nextX < 0 || nextX >= canvas.width) bossDir.x *= -1;
+               if (nextY < 0 || nextY >= canvas.height) bossDir.y *= -1;
+           }
+       }
+
+
+       function gameOver() {
+           alert("gunflame Score: " + score + "\nReturning to last checkpoint!");
+           score = checkpointState.score;
+           currentBossType = checkpointState.currentBossType;
+           boss2Defeated = false; // yeah i give up all these lines are corny im just gonna use placeholders           scoreElement.innerHTML = score;
+           snake = [{ x: 9 * box, y: 10 * box }];
+           for(let i = 1; i < checkpointState.snakeLength; i++) {
+               snake.push({ x: 9 * box, y: 10 * box });
+           }
+           dir = { x: 0, y: 0 };
+           bossMode = false;
+           bossSnake = [];
+           bossHits = 0;
+           msgElement.innerHTML = "placeholder (Use Arrows for Diagonal)";
+       }
+
+
+       function draw() {
+           gameTick++;
+           ctx.fillStyle = "black";
+           ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+
+           for(let i = 0; i < snake.length; i++) {
+               ctx.fillStyle = (i == 0) ? "#2ecc71" : "#27ae60";
+               ctx.fillRect(snake[i].x, snake[i].y, box-1, box-1);
+           }
+
+
+           ctx.fillStyle = "#e74c3c";
+           ctx.fillRect(food.x, food.y, box-1, box-1);
+
+
+           // Boss Trigger Logic
+           if (!bossMode) {
+               if (currentBossType === 1 && score >= 5) {
+                   bossMode = true;
+                   msgElement.innerHTML = "placeholder, Lure him into your tail 3 times";
+                   bossSnake = [{x: 18*box, y: 1*box}, {x: 19*box, y: 1*box}];
+               } else if (currentBossType === 2 && score >= checkpointState.bossThreshold && !boss2Defeated) {
+                   bossMode = true;
+                   bossSnake = [{x: 0, y: 0}, {x: box, y: box}];
+                   bossDir = {x: box, y: box};
+                   msgElement.innerHTML = "placeholder, Lure him into your tail 3 times";
+               }
+           }
+
+
+           if (bossMode && bossSnake.length > 0) {
+               for(let i = 0; i < bossSnake.length; i++) {
+                   ctx.fillStyle = (currentBossType === 1) ? (i == 0 ? "#9b59b6" : "#8e44ad") : (i == 0 ? "#f1c40f" : "#f39c12");
+                   ctx.fillRect(bossSnake[i].x, bossSnake[i].y, box-1, box-1);
+               }
+
+
+               let movementSpeed = (currentBossType === 1) ? 3 : 2;
+               if (gameTick % movementSpeed === 0) {
+                   updateBossDirection();
+                   let bHead = { x: bossSnake[0].x + bossDir.x, y: bossSnake[0].y + bossDir.y };
+                  
+                   if(bHead.x < 0) bHead.x = 0;
+                   if(bHead.x >= canvas.width) bHead.x = canvas.width - box;
+                   if(bHead.y < 0) bHead.y = 0;
+                   if(bHead.y >= canvas.height) bHead.y = canvas.height - box;
+
+
+                   if(bHead.x == snake[0].x && bHead.y == snake[0].y) { gameOver(); return; }
+
+
+                   for(let i = 1; i < snake.length; i++) {
+                       if(bHead.x == snake[i].x && bHead.y == snake[i].y) {
+                           if (currentBossType === 2 && Math.random() < 0.75) {
+                               bHead.x = Math.floor(Math.random() * 19) * box;
+                               bHead.y = Math.floor(Math.random() * 19) * box;
+                               msgElement.innerHTML = "placeholder (Teleported!)";
+                           } else {
+                               bossHits++;
+                               msgElement.innerHTML = " placeholder " + (3 - bossHits) + " left!";
+                               bHead = {x: (bossHits % 2 === 0 ? 0 : 19*box), y: (currentBossType === 2 ? 19*box : 0)};
+                               if (bossHits >= 3) {
+                                   score += 50;
+                                   scoreElement.innerHTML = score;
+                                   bossHits = 0;
+                                   bossMode = false;
+                                   bossSnake = [];
+                                   if (currentBossType === 1) {
+                                       currentBossType = 2;
+                                       checkpointState = { score: score, snakeLength: snake.length, currentBossType: 2, bossThreshold: score + 5 };
+                                       msgElement.innerHTML = "placeholder";
+                                   } else {
+                                       boss2Defeated = true; // Mark boss 2 as done
+                                       msgElement.innerHTML = "placeholder";
+                                   }
+                               }
+                           }
+                           break;
+                       }
+                   }
+                   if (bossSnake.length > 0) {
+                       bossSnake.pop();
+                       bossSnake.unshift(bHead);
+                   }
+               }
+           }
+
+
+           if (dir.x !== 0 || dir.y !== 0) {
+               let newHead = { x: snake[0].x + dir.x, y: snake[0].y + dir.y };
+
+
+               if(newHead.x < 0 || newHead.x >= canvas.width || newHead.y < 0 || newHead.y >= canvas.height || collision(newHead, snake)) {
+                   gameOver();
+                   return;
+               }
+
+
+               if (bossMode && bossSnake.length > 0) {
+                   if (newHead.x === bossSnake[0].x && newHead.y === bossSnake[0].y) {
+                       gameOver();
+                       return;
+                   }
+               }
+
+
+               if(newHead.x == food.x && newHead.y == food.y) {
+                   score++;
+                   scoreElement.innerHTML = score;
+                   food = { x: Math.floor(Math.random() * 19) * box, y: Math.floor(Math.random() * 19) * box };
+               } else {
+                   snake.pop();
+               }
+               snake.unshift(newHead);
+           }
+       }
+
+
+       let game = setInterval(draw, 100);
+   </script>
+</body>
+</html>
