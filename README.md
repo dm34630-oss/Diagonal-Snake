@@ -7,3 +7,6 @@ The entire reason for it's name, this version of snake allows you to move diagon
 # Bosses
 After every 5 points, a boss will appear. (this will only happen twice as of the current version.)
 Discover how their mechanics work, and defeat them in that following way. After every boss defeated, you will get a checkpoint.
+
+# Notes
+There are a few bugs that will be fixed in due time.
