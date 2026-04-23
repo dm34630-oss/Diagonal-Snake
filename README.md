@@ -11,4 +11,4 @@ Discover how their mechanics work, and defeat them in that following way. After 
 # Notes
 There are a few bugs that will be fixed in due time.
 
-v0.5p1 is the CURRENT newest version of Diagonal Snake as of April 23rd 2026.
+v0.5p1.1 is the CURRENT newest version of Diagonal Snake as of April 23rd 2026.
